@@ -14,6 +14,7 @@ import android.content.ContentResolver;
 import android.content.CursorLoader;
 import android.content.Intent;
 import android.content.Loader;
+import android.content.pm.ResolveInfo;
 import android.database.Cursor;
 import android.net.Uri;
 import android.os.Build;
@@ -29,7 +30,10 @@ import android.widget.SearchView;
 import android.widget.SimpleCursorAdapter;
 import android.widget.Toast;
 
+import java.util.List;
+
 public class MainActivity extends Activity  implements AdapterView.OnItemClickListener, AdapterView.OnItemLongClickListener, FilterQueryProvider, SearchView.OnQueryTextListener {
+    //
     private SimpleCursorAdapter mAdapter;
 
     // stuff we want from the contact db
@@ -84,16 +88,48 @@ public class MainActivity extends Activity  implements AdapterView.OnItemClickLi
         return super.onCreateOptionsMenu(menu);
     }
 
+    private String getWhatsAppPkgName() {
+        Intent mainIntent = new Intent(Intent.ACTION_MAIN, null);
+        mainIntent.addCategory(Intent.CATEGORY_LAUNCHER);
+        List<ResolveInfo> pkgAppsList = getPackageManager().queryIntentActivities( mainIntent, 0);
+        for (ResolveInfo info : pkgAppsList) {
+            if (info.loadLabel(getPackageManager()).equals("WhatsApp")) {
+                return info.activityInfo.packageName;
+            }
+        }
+
+        return null;
+    }
+
+    private String postProcessNumber(String number) {
+        // do some postprocessing
+        number = number.replace("-", "")
+                .replace(" ", "")
+                .replace("+", "00");
+
+        if (!number.startsWith("00")) {
+            number = "31" + number.substring(1);
+        } else {
+            number = number.substring(2);
+        }
+
+        return number;
+    }
+
     @Override
     public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
         // get the cursor
         Cursor cursor = mAdapter.getCursor();
+
         // move it to the position of the clicked item
         cursor.moveToPosition(position);
+
         // get contact id
         long contactId = cursor.getLong(CONTACT_ID_INDEX);
+
         // get CR to be able to query
         ContentResolver cr = getContentResolver();
+
         // query phone number database
         Cursor phones = cr.query(ContactsContract.CommonDataKinds.Phone.CONTENT_URI, null,
                 ContactsContract.CommonDataKinds.Phone.CONTACT_ID + " = ?", new String[] { String.valueOf(contactId) }, null);
@@ -136,22 +172,19 @@ public class MainActivity extends Activity  implements AdapterView.OnItemClickLi
 
         // match found?
         if (number != null) {
-            // do some postprocessing
-            number = number.replace("-", "")
-                    .replace(" ", "")
-                    .replace("+", "00");
+            String pkg = getWhatsAppPkgName();
 
-            if (!number.startsWith("00")) {
-                number = "31" + number.substring(1);
-            } else {
-                number = number.substring(2);
+            if (pkg == null) {
+                // if no match found, let the user know
+                Toast.makeText(this, "No WhatsApp found!", Toast.LENGTH_SHORT).show();
+                return;
             }
 
             // open up whatsapp via an intent
-            Uri uri = Uri.parse("https://api.whatsapp.com/send?phone=" + number);
+            Uri uri = Uri.parse("https://api.whatsapp.com/send?phone=" + postProcessNumber(number));
 
             Intent intent = new Intent(Intent.ACTION_VIEW, uri);
-            intent.setPackage("com.whatsapp");
+            intent.setPackage(pkg);
             startActivity(intent);
         } else {
             // if no match found, let the user know
