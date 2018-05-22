@@ -8,4 +8,4 @@ You don't wanna share all of your contacts with WhatsApp and rather keep it as s
 Open up the app. Click on a contact to start a conversation. Long press to open up contact details.
 
 ## Download APK
-You can get an APK for version 1.0 at the Releases tab.
+You can get an APK at the Releases tab.
