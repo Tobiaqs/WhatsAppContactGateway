@@ -7,13 +7,16 @@ package tobiass.whatsappcontactgateway;
  * @author Tobiaqs
  */
 
+import android.Manifest;
 import android.app.Activity;
 import android.app.LoaderManager;
 import android.content.ContentProvider;
 import android.content.ContentResolver;
+import android.content.Context;
 import android.content.CursorLoader;
 import android.content.Intent;
 import android.content.Loader;
+import android.content.pm.PackageManager;
 import android.content.pm.ResolveInfo;
 import android.database.Cursor;
 import android.net.Uri;
@@ -32,8 +35,11 @@ import android.widget.Toast;
 
 import java.util.List;
 
-public class MainActivity extends Activity  implements AdapterView.OnItemClickListener, AdapterView.OnItemLongClickListener, FilterQueryProvider, SearchView.OnQueryTextListener {
-    //
+public class MainActivity extends Activity implements AdapterView.OnItemClickListener, AdapterView.OnItemLongClickListener, FilterQueryProvider, SearchView.OnQueryTextListener {
+    // constant used when requesting contact permission
+    private static final int PERMISSIONS_REQUEST_READ_CONTACTS = 1;
+
+    // adapter that will provide the contacts cursor to the listview
     private SimpleCursorAdapter mAdapter;
 
     // stuff we want from the contact db
@@ -206,9 +212,28 @@ public class MainActivity extends Activity  implements AdapterView.OnItemClickLi
         return true;
     }
 
+    @Override
+    public void onRequestPermissionsResult(int requestCode,
+                                           String permissions[], int[] grantResults) {
+        if (requestCode == PERMISSIONS_REQUEST_READ_CONTACTS) {
+            // If request is cancelled, the result arrays are empty.
+            if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                mAdapter.getFilter().filter(null);
+            } else {
+                Toast.makeText(this, "Need permission", Toast.LENGTH_SHORT).show();
+            }
+            return;
+        }
+    }
+
     // the method that actually queries the contact db and also filters
     @Override
     public Cursor runQuery(CharSequence constraint) {
+        if (checkSelfPermission(Manifest.permission.READ_CONTACTS) != PackageManager.PERMISSION_GRANTED) {
+            requestPermissions(new String[]{ Manifest.permission.READ_CONTACTS }, PERMISSIONS_REQUEST_READ_CONTACTS);
+            return new EmptyCursor();
+        }
+
         ContentResolver cr = getContentResolver();
         String selection = null;
         String[] selectionArgs = null;
