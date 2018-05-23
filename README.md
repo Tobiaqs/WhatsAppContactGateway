@@ -9,3 +9,6 @@ Open up the app. Click on a contact to start a conversation. Long press to open 
 
 ## Download APK
 You can get an APK at the Releases tab.
+
+## License
+MIT
